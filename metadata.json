@@ -1,0 +1,6 @@
+{
+  "name": "APK and Game Downloader",
+  "description": "A fully functional APK & Game downloading website with an adorable Chibli styling and a high-security 4-Step verification Admin Panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
