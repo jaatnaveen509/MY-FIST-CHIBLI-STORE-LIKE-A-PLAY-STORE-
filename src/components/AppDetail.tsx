@@ -3,6 +3,24 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AppItem, ReviewRating, User } from '../types';
 import { Star, ArrowLeft, Gamepad2, ArrowDownCircle, RefreshCw, Calendar, CheckSquare, Sparkles, Send, ShieldAlert } from 'lucide-react';
 
+function getDownloadUrl(downloadUrl: string): string {
+  if (typeof window === 'undefined') return downloadUrl;
+  
+  // If we are on local development or Cloud Run preview container, use our API proxy 
+  // to bypass iframe safe-mode policies.
+  const isServerAvailable = 
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.includes('run.app'); // AI Studio Preview URL
+  
+  if (isServerAvailable) {
+    return `/api/download?url=${encodeURIComponent(downloadUrl)}`;
+  }
+  
+  // Otherwise, on static hosts like Vercel, download directly from the origin source to avoid 404 errors!
+  return downloadUrl;
+}
+
 interface AppDetailProps {
   app: AppItem;
   user: User | null;
@@ -59,13 +77,13 @@ export default function AppDetail({
   // Start the countdown sequence for custom secure downloads
   const triggerDirectDownloadFile = () => {
     onDownloadStarted(app.id);
-    const proxyUrl = `/api/download?url=${encodeURIComponent(app.downloadUrl)}`;
+    const finalUrl = getDownloadUrl(app.downloadUrl);
     try {
       // Direct assignment securely triggers files download manager on mobile phones instantly
-      window.location.href = proxyUrl;
+      window.location.href = finalUrl;
     } catch (err) {
       const anchor = document.createElement('a');
-      anchor.href = proxyUrl;
+      anchor.href = finalUrl;
       anchor.setAttribute('download', `${app.name}.apk`);
       document.body.appendChild(anchor);
       anchor.click();
@@ -239,7 +257,7 @@ export default function AppDetail({
                     Securing tunnel nodes from ancient winds...
                   </p>
                   <a
-                    href={`/api/download?url=${encodeURIComponent(app.downloadUrl)}`}
+                    href={getDownloadUrl(app.downloadUrl)}
                     download={`${app.name}.apk`}
                     className="mt-2 text-[10.5px] text-[#3b662a] hover:text-[#52893c] underline font-extrabold cursor-pointer inline-flex items-center gap-1 z-10"
                   >
@@ -271,7 +289,7 @@ export default function AppDetail({
                     Check your browser downloads bar.
                   </p>
                   <a
-                    href={`/api/download?url=${encodeURIComponent(app.downloadUrl)}`}
+                    href={getDownloadUrl(app.downloadUrl)}
                     download={`${app.name}.apk`}
                     className="mt-1.5 text-[10.5px] text-amber-800 hover:text-amber-950 underline font-black cursor-pointer inline-flex items-center gap-1"
                   >
