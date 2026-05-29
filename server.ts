@@ -279,44 +279,76 @@ app.get('/api/download', (req, res) => {
   try {
     const parsedUrl = new URL(fileUrl);
     const filename = path.basename(parsedUrl.pathname) || 'file.apk';
-    const requester = parsedUrl.protocol === 'https:' ? https : http;
 
-    const requestOptions = {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Mobile Safari/537.36'
-      }
-    };
-
-    const handleStream = (streamResponse: http.IncomingMessage) => {
-      // Check for redirects (very common with Gdrive, Archive.org, and direct CDN links)
-      if (streamResponse.statusCode && streamResponse.statusCode >= 300 && streamResponse.statusCode < 400 && streamResponse.headers.location) {
-        const redirectUrl = streamResponse.headers.location;
-        const redirectedParsed = new URL(redirectUrl, fileUrl); // Handle relative redirect coordinates
-        const subRequester = redirectedParsed.protocol === 'https:' ? https : http;
-
-        subRequester.get(redirectedParsed.href, requestOptions, (redirectedStream) => {
-          res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-          res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-          redirectedStream.pipe(res);
-        }).on('error', (err) => {
-          console.error('Redirect streaming error:', err);
+    const followRedirectsAndPipe = (currentUrl: string, depth: number) => {
+      if (depth > 5) {
+        console.error('[Download Proxy] Max redirects reached (depth 5). Falling back to direct redirect.');
+        if (!res.headersSent) {
           res.redirect(fileUrl);
-        });
+        }
         return;
       }
 
-      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      streamResponse.pipe(res);
+      try {
+        const u = new URL(currentUrl);
+        const requester = u.protocol === 'https:' ? https : http;
+
+        const requestOptions = {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+            'Accept': '*/*'
+          }
+        };
+
+        const request = requester.get(currentUrl, requestOptions, (streamResponse) => {
+          const statusCode = streamResponse.statusCode || 200;
+
+          // If redirect found, follow recursively
+          if (statusCode >= 300 && statusCode < 400 && streamResponse.headers.location) {
+            const redirectUrl = streamResponse.headers.location;
+            const redirectedParsed = new URL(redirectUrl, currentUrl); // handles relative location headers correctly
+            followRedirectsAndPipe(redirectedParsed.href, depth + 1);
+            return;
+          }
+
+          // If client/server error on retrieving file directly, fallback to a clean redirect in client-device browser
+          if (statusCode >= 400) {
+            console.error(`[Download Proxy] Received status code ${statusCode} on direct stream query. Falling back to direct URL.`);
+            if (!res.headersSent) {
+              res.redirect(fileUrl);
+            }
+            return;
+          }
+
+          // Pipe the working direct stream to browser with appropriate headers
+          if (!res.headersSent) {
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+            streamResponse.pipe(res);
+          }
+        });
+
+        request.on('error', (err) => {
+          console.error(`[Download Proxy] Streaming connection error at depth ${depth}:`, err);
+          if (!res.headersSent) {
+            res.redirect(fileUrl);
+          }
+        });
+      } catch (err) {
+        console.error('[Download Proxy] Malformed redirected URL or structure parse error:', err);
+        if (!res.headersSent) {
+          res.redirect(fileUrl);
+        }
+      }
     };
 
-    requester.get(fileUrl, requestOptions, handleStream).on('error', (err) => {
-      console.error('Download streaming error:', err);
-      res.redirect(fileUrl);
-    });
+    followRedirectsAndPipe(fileUrl, 0);
+
   } catch (error) {
-    console.error('General proxy download error:', error);
-    res.redirect(fileUrl);
+    console.error('[Download Proxy] General initialization download error:', error);
+    if (!res.headersSent) {
+      res.redirect(fileUrl);
+    }
   }
 });
 
