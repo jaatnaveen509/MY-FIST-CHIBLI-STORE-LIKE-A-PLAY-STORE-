@@ -104,7 +104,7 @@ export default function Navbar({
 
         {/* User Account Controls */}
         <div id="navbar-user-actions" className="flex items-center gap-3.5">
-          {user ? (
+          {user && (
             <div className="flex items-center gap-2.5 bg-[#fbf9f4] border-2 border-[#e3dcd3] rounded-2xl py-1.5 px-3">
               {/* Profile Avatar with custom state */}
               <div className="w-8 h-8 rounded-full bg-[#fce8d5] border border-[#e9bc9d] flex items-center justify-center text-xs font-bold text-[#b45309] uppercase">
@@ -131,33 +131,16 @@ export default function Navbar({
                 </button>
               )}
 
-              <button
-                id="navbar-logout-btn"
-                onClick={onLogout}
-                className="p-1 text-[#a08f80] hover:text-[#991b1b] transition-all cursor-pointer"
-                title="Log out of shelter"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                id="navbar-signup-btn"
-                onClick={onOpenAuth}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-black bg-[#fff3cd] text-[#854d0e] hover:bg-[#fef08a] rounded-2xl border-2 border-[#e9bc9d] shadow-[0_4px_0_#e9bc9d] hover:translate-y-[2px] hover:shadow-[0_2px_0_#e9bc9d] active:translate-y-[4px] active:shadow-none cursor-pointer transition-all"
-              >
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>Join Chibli!</span>
-              </button>
-              <button
-                id="navbar-login-btn"
-                onClick={onOpenAuth}
-                className="px-4 py-2.5 text-xs font-black text-[#5c4a3c] hover:bg-[#f5efe6] bg-transparent rounded-2xl border border-[#e3dcd3] cursor-pointer transition-all flex items-center gap-1.5"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Login</span>
-              </button>
+              {user.username !== 'Cozy Traveler' && (
+                <button
+                  id="navbar-logout-btn"
+                  onClick={onLogout}
+                  className="p-1 text-[#a08f80] hover:text-[#991b1b] transition-all cursor-pointer"
+                  title="Return to cozy traveler guest Mode"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )}
 

@@ -19,6 +19,7 @@ interface AdminPanelProps {
   onRefreshNotifications: () => void;
   onRefreshConfig: () => void;
   currentUser?: User | null;
+  onAdminLoginSuccess?: (user: User) => void;
 }
 
 export default function AdminPanel({
@@ -32,7 +33,8 @@ export default function AdminPanel({
   onRefreshSlides,
   onRefreshNotifications,
   onRefreshConfig,
-  currentUser
+  currentUser,
+  onAdminLoginSuccess
 }: AdminPanelProps) {
   // Verification steps: 0, 1, 2, 3, 4 (4 is fully unlocked)
   const [currentStep, setCurrentStep] = useState<number>(0);
@@ -361,6 +363,17 @@ export default function AdminPanel({
       setSecProgressMsg('🎉 100% UNLOCKED. Magical Control Terminal ready.');
       setTimeout(() => {
         setCurrentStep(4); // Fully unlocked state
+        if (onAdminLoginSuccess) {
+          onAdminLoginSuccess(dbUserFound || {
+            id: 'user-admin-db',
+            username: step1User || 'adminlogin@login',
+            email: 'admin@chiblihaven.com',
+            isAdmin: true,
+            downloadHistory: [],
+            ratedApps: {},
+            createdAt: new Date().toISOString()
+          });
+        }
       }, 1200);
     } catch (err: any) {
       setAuthError(err.message || 'Step 4 master signature mismatch');

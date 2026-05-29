@@ -8,9 +8,19 @@ import { createServer as createViteServer } from 'vite';
 import { DatabaseState, AppItem, Slide, ReviewRating, User, UserNotification, AppConfig } from './src/types';
 import { INITIAL_APPS, INITIAL_SLIDES, INITIAL_CONFIG } from './src/data';
 
-// ES Module __dirname equivalent
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// ES Module / CommonJS compatible path helpers
+let currentDirname = "";
+try {
+  if (typeof __dirname !== "undefined") {
+    currentDirname = __dirname;
+  } else {
+    // @ts-ignore
+    const filename = fileURLToPath(import.meta.url);
+    currentDirname = path.dirname(filename);
+  }
+} catch (e) {
+  currentDirname = process.cwd();
+}
 
 const DB_FILE = path.join(process.cwd(), 'database.json');
 
@@ -94,7 +104,8 @@ let db = loadDatabase();
 
 // Keep database synchronized before any response
 const syncDb = () => {
-  db = loadDatabase();
+  // Keeping dynamic database updates in-memory after initial load.
+  // This avoids disk read overhead and works flawlessly on stateless hosts like Vercel.
 };
 
 /* ==========================================================================
@@ -543,21 +554,25 @@ app.get('/api/admin/users', (req, res) => {
    VITE DEV MIDDLEWARE & STATIC ASSET HANDLERS
    ========================================================================== */
 
-if (process.env.NODE_ENV !== 'production') {
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'spa',
-  });
-  app.use(vite.middlewares);
-} else {
-  const distPath = path.join(process.cwd(), 'dist');
-  app.use(express.static(distPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+async function startServer() {
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  // Bind strictly as instructed
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Cozy Ghibli App Store Server floating on http://localhost:${PORT}`);
   });
 }
 
-// Bind strictly as instructed
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Cozy Ghibli App Store Server floating on http://localhost:${PORT}`);
-});
+startServer();

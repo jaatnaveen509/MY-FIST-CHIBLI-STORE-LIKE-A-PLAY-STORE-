@@ -21,14 +21,31 @@ export default function App() {
   const [users, setUsers] = useState<User[]>([]);
 
   // Client states
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const savedUserStr = localStorage.getItem('chibli_saved_user');
+    if (savedUserStr) {
+      try {
+        return JSON.parse(savedUserStr);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return {
+      id: 'guest_traveler',
+      username: 'Cozy Traveler',
+      email: 'traveler@chiblihaven.com',
+      isAdmin: false,
+      downloadHistory: [],
+      ratedApps: {},
+      createdAt: new Date().toISOString()
+    };
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedApp, setSelectedApp] = useState<AppItem | null>(null);
   const [selectedAppReviews, setSelectedAppReviews] = useState<any[]>([]);
 
   // Modals state
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   // Weather / cozy mood states (Fully interactive for true Ghibli feel!)
@@ -172,8 +189,17 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('chibli_saved_user');
+    const guest = {
+      id: 'guest_traveler',
+      username: 'Cozy Traveler',
+      email: 'traveler@chiblihaven.com',
+      isAdmin: false,
+      downloadHistory: [],
+      ratedApps: {},
+      createdAt: new Date().toISOString()
+    };
+    setCurrentUser(guest);
+    localStorage.setItem('chibli_saved_user', JSON.stringify(guest));
   };
 
   const handleSelectAppFromId = (appId: string) => {
@@ -230,15 +256,10 @@ export default function App() {
             setSelectedCategory(cat);
             setSelectedApp(null); // return to main index lists
           }}
-          onOpenAuth={() => setShowAuthModal(true)}
+          onOpenAuth={() => {}}
           onLogout={handleLogout}
           onOpenAdmin={() => {
-            if (currentUser?.isAdmin || currentUser?.username === 'adminlogin@login') {
-              setShowAdminPanel(true);
-            } else {
-              alert("🌿 Welcome traveler! To open the secure admin panel, you must first log in using your Admin account under the User Panel. Let me open the doorway for you...");
-              setShowAuthModal(true);
-            }
+            setShowAdminPanel(true);
           }}
           onGoHome={() => {
             setSelectedApp(null);
@@ -508,16 +529,6 @@ export default function App() {
           </p>
         </footer>
 
-        {/* AUTHENTICATION MODAL */}
-        <AnimatePresence>
-          {showAuthModal && (
-            <AuthModal
-              onClose={() => setShowAuthModal(false)}
-              onLoginSuccess={handleLoginSuccess}
-            />
-          )}
-        </AnimatePresence>
-
         {/* SECURE ADMIN TERMINAL WITH 4-STEP VERIFICATION */}
         <AnimatePresence>
           {showAdminPanel && (
@@ -533,6 +544,7 @@ export default function App() {
               onRefreshNotifications={fetchNotifications}
               onRefreshConfig={fetchConfig}
               currentUser={currentUser}
+              onAdminLoginSuccess={handleLoginSuccess}
             />
           )}
         </AnimatePresence>
